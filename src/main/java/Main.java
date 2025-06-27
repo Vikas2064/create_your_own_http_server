@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 
 
 public class Main {
@@ -20,9 +21,11 @@ public class Main {
           String line = buff.readLine();
           System.out.println("this is the request line : "+line);
           String httpResponse = "";
-          if(line!=null && line.split(" ")[1].equals("/"))
+          if(line!=null && line.split(" ")[1].startsWith("/echo"))
           {
-              httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
+              String stringArray= line.split(" ")[1].split("/")[2];
+              System.out.println("this is the stringArray: "+stringArray);
+              httpResponse = "HTTP/1.1 200 OK\r\n\r\n"+stringArray;
           }
           else
           {
