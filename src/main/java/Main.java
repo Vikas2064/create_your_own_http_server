@@ -18,18 +18,22 @@ public class Main {
           InputStream in = socket.getInputStream();
           InputStreamReader inr= new InputStreamReader(in);
           BufferedReader buff = new BufferedReader(inr);
-          String line = buff.readLine();
+          String line = null;
           System.out.println("this is the request line : "+line);
           String httpResponse = "";
-          if(line!=null && line.split(" ")[1].startsWith("/echo"))
-          {
-              String stringArray= line.split(" ")[1].split("/")[2];
-              System.out.println("this is the stringArray: "+stringArray);
-              httpResponse = "HTTP/1.1 200 OK\r\n\r\n"+stringArray;
-          }
-          else
-          {
-              httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+          boolean firstLine=true;
+          httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+          while ((line=buff.readLine())!=null  && !line.isEmpty()){
+              if (firstLine) {
+                  System.out.println("Request Line: " + line); // e.g., GET / HTTP/1.1
+                  firstLine = false;
+              } else {
+                  System.out.println("Header: " + line); // All header lines
+                  if(line.contains("User-Agent"))
+                  {
+                      httpResponse = "HTTP/1.1 200 OK\r\n\r\n"+line;
+                  }
+              }
           }
 
 
