@@ -7,14 +7,23 @@ import java.util.List;
 public class Main {
   public static void main(String[] args) {
       try{
+          int i=0;
           ServerSocket serverSocket= new ServerSocket(5000);
+          while(i<=3)
+          {
+              System.out.println("accepting the connection from client");
+              Socket socket = serverSocket.accept();
+              new Thread(()-> handleClient(socket)).start();
+              i=i+1;
+          }
 
+      } catch (IOException e) {
+          throw new RuntimeException(e);
+      }
+  }
 
-          System.out.println("accepting the connection from client");
-          Socket socket = serverSocket.accept();
-
-          System.out.println("parsing the http request from the server: ");
-
+  static void handleClient(Socket socket){
+      try{
           InputStream in = socket.getInputStream();
           InputStreamReader inr= new InputStreamReader(in);
           BufferedReader buff = new BufferedReader(inr);
@@ -43,10 +52,15 @@ public class Main {
           out.write(httpResponse.getBytes("UTF-8"));
 
           socket.close();
-          serverSocket.close();  // optional, to close server
-
-      } catch (IOException e) {
-          throw new RuntimeException(e);
       }
+      catch (IOException ex)
+      {
+          ex.printStackTrace();
+      }
+
   }
+
+
 }
+
+
