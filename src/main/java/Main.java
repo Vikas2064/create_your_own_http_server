@@ -1,7 +1,8 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.List;
+import java.nio.file.FileSystemException;
+import java.nio.file.Files;
 
 
 public class Main {
@@ -35,13 +36,25 @@ public class Main {
           while ((line=buff.readLine())!=null  && !line.isEmpty()){
               if (firstLine) {
                   System.out.println("Request Line: " + line); // e.g., GET / HTTP/1.1
-                  firstLine = false;
-              } else {
-                  System.out.println("Header: " + line); // All header lines
-                  if(line.contains("User-Agent"))
-                  {
-                      httpResponse = "HTTP/1.1 200 OK\r\n\r\n"+line;
+                  String endPoints= line.split(" ")[1].split("/")[2];
+                  System.out.println("this is the endpoint: "+endPoints);
+                  try{
+                      File file= new File("E:/Interview/create your own http server/codecrafters-http-server-java/src/main/tmp/"+endPoints+".txt");
+                      String fileContent = Files.readString(file.toPath());
+                      System.out.println("this is the content of the file : "+fileContent);
+                      String header = "HTTP/1.1 200 OK\r\n"+
+                                     "Content-Type: application/octet-stream\r\n"+
+                                     "Content-Length: " + fileContent.getBytes().length+ "\r\n" +
+                                     "\r\n";
+                      OutputStream out = socket.getOutputStream();
+                      out.write(header.getBytes());
+                      out.write(fileContent.getBytes());
+                      out.flush();
+
+                  }catch (FileSystemException fx){
+                      System.out.println(" no such file exception : "+ fx);
                   }
+                  firstLine = false;
               }
           }
 
