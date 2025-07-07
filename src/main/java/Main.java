@@ -1,9 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.zip.GZIPOutputStream;
 
 
 public class Main {
@@ -14,7 +12,13 @@ public class Main {
             while (i <= 3) {
                 System.out.println("accepting the connection from client");
                 Socket socket = serverSocket.accept();
-                new Thread(() -> handleClient(socket)).start();
+                new Thread(() -> {
+                    try {
+                        handleClient(socket);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).start();
                 i = i + 1;
             }
 
@@ -23,73 +27,50 @@ public class Main {
         }
     }
 
-    static void handleClient(Socket socket) {
-        try {
-            InputStream inputStream = socket.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            OutputStream out = socket.getOutputStream();
+    public static byte[] compress(String data) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        GZIPOutputStream gzipOut = new GZIPOutputStream(byteStream);
 
-            String line;
-            boolean firstLine = true;
-            int contentLength = 0;
-            String fileName="";
-            // Read headers
-
-            String response = "HTTP/1.1 400 not found\r\nContent-Length: 2\r\n\r\nNOTFOUND";
-            while ((line = reader.readLine()) != null && !line.isEmpty()) {
-
-                if(firstLine)
-                {
-//                    System.out.println("this is the split part          "+line.split(" ")[1].split("/")[2]);
-                    fileName= line.split(" ")[1].split("/")[2];
-                    firstLine=false;
-                }
-                System.out.println("this is the header and body:  "+line);
-                // Look for Content-Length header
-                if (line.toLowerCase().startsWith("content-length:")) {
-                    contentLength = Integer.parseInt(line.split(":")[1].trim());
-                }
-            }
-
-            // Now read the body (if there is one)
-            String requestBody="";
-            if (contentLength > 0) {
-                char[] body = new char[contentLength];
-                int read = reader.read(body, 0, contentLength);
-                requestBody = new String(body, 0, read);
-                System.out.println("this is the request body: "+requestBody);
-                Path path = Paths.get("src/main/tmp/"+fileName+".txt");
-                try{
-                    Files.createDirectories(path.getParent());
-                    Files.createFile(path);
-                    System.out.println("File created at : "+path.toAbsolutePath());
-                    File file = new File(String.valueOf(path));
-                    file.getParentFile().mkdirs();
-                    FileOutputStream fos= new FileOutputStream(file);
-                    fos.write(requestBody.getBytes());
-                    response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-                    fos.close();
-                }catch (IOException ex)
-                {
-                    System.out.println("error is creating file: "+ex.getMessage());
-                }
-
-            } else {
-                System.out.println("No request body.");
-            }
-
-            // Send a dummy 200 OK response
-            out.write(response.getBytes());
-            out.flush();
-            socket.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        gzipOut.write(data.getBytes());
+        gzipOut.close(); // finish compression
+        return byteStream.toByteArray(); // return compressed bytes
     }
 
+    static void handleClient(Socket socket) throws IOException {
 
+        BufferedReader buff = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        String line = "";
+        String encoding_method = "";
+        while ((line = buff.readLine()) != null && !(line.isEmpty())) {
+            System.out.println("this is the line : " + line);
+            if (line.contains("Accept-Encoding")) {
+                encoding_method = line.split(" ")[1];
+            }
+        }
+        String body = "this is the response body";
 
+        String response="";
+        OutputStream out = socket.getOutputStream();
+        if(encoding_method.equals("gzip")) {
+            byte[] responseBody = compress(body);
+            System.out.println("this is the respnose body: "+responseBody);
+            response = "HTTP/1.1 200 OK\r\n" +
+                    "Content-Encoding: gzip\r\n" +
+                    "Content-Type: text/plain\r\n" +
+                    "Content-Length: " + body.getBytes().length + "\r\n";
+            out.write(response.getBytes());
+            out.write(responseBody);
+        }
+        else {
+            System.out.println("this is the response body: "+body);
+            response = "HTTP/1.1 200 OK\r\n" +
+                    "Content-Type: text/plain\r\n" +
+                    "Content-Length: " + body.getBytes().length + "\r\n";
+            out.write(response.getBytes());
+            out.write(body.getBytes());
+        }
+        out.flush();
+    }
 }
 
 
